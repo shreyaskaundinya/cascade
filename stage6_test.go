@@ -1,6 +1,6 @@
 package cascade_test
 
-// Stage 6: Tiered Compaction End-to-End
+// Stage 6: Levelled Compaction End-to-End
 // Goal: wire compaction into the engine, run a full pass across L0 → L1 → L2,
 // and observe the reduction in read IOs as scattered SSTables are merged.
 // Run with: go test -run TestStage6 ./...

@@ -20,6 +20,7 @@ import (
 // ---------------------------------------------------------------------------
 
 // TestStage2_WriteSSTable verifies that WriteSSTable produces a non-empty file on disk.
+// This is already implemented for you and should pass already
 func TestStage2_WriteSSTable(t *testing.T) {
 	dir := t.TempDir()
 	entries := []cascade.KVEntry{
@@ -41,6 +42,28 @@ func TestStage2_WriteSSTable(t *testing.T) {
 	if info.Size() < int64(cascade.BlockSize) {
 		t.Fatalf("SSTable file too small: %d bytes (want >= %d)", info.Size(), cascade.BlockSize)
 	}
+}
+
+func TestStage2_SSTableReaderSanity(t *testing.T) {
+	dir := t.TempDir()
+	customEntry := cascade.GenerateNumberedUpsert(1, "hello")
+	entries := []cascade.KVEntry{customEntry}
+
+	sst, err := cascade.WriteSSTable(dir+"/test.sst", entries)
+	if err != nil {
+		t.Fatalf("SSTable file not found: %v", err)
+	}
+
+	iocnt := cascade.NewIOCounter()
+	kve, found, err := sst.Get(customEntry.Key, iocnt)
+	if err != nil || found == false {
+		t.Errorf("Could not read from SSTable : %s", err)
+	}
+
+	if kve != customEntry {
+		t.Fatalf("Items written [%s: %s: %t] and read [%s: %s: %t] do not match", customEntry.Key, customEntry.Value, customEntry.IsTombstone, kve.Key, kve.Value, kve.IsTombstone)
+	}
+
 }
 
 // TestStage2_SSTable_Get_100Keys writes 100 entries and reads each back by key.
