@@ -50,7 +50,7 @@ type SSTable struct {
 	Path string
 }
 
-func WriteSSTable(path string, entries []KVEntry) (*SSTable, error) {
+func WriteSSTable(tableNum uint64, path string, entries []KVEntry) (*SSTable, error) {
 	if len(entries) == 0 {
 		return nil, errors.New("cannot write SSTable with no entries")
 	}
@@ -135,7 +135,15 @@ func WriteSSTable(path string, entries []KVEntry) (*SSTable, error) {
 }
 
 func (s *SSTable) Get(key string, counter *IOCounter) (KVEntry, bool, error) {
+	// Read the Header
+	// Read the Index Block
+	// Read all the data blocks
 	return KVEntry{}, false, nil
 }
 
-func (s *SSTable) Scan(counter *IOCounter) ([]KVEntry, error) { return nil, nil }
+func (s *SSTable) Scan(counter *IOCounter) ([]KVEntry, error) {
+	// Read the Header
+	// Read the Index Block
+	// Read all the data blocks
+	return nil, nil
+}

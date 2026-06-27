@@ -29,7 +29,7 @@ func TestStage2_WriteSSTable(t *testing.T) {
 		cascade.GenerateDelete("cherry"),
 	}
 
-	_, err := cascade.WriteSSTable(dir+"/test.sst", entries)
+	_, err := cascade.WriteSSTable(1, dir+"/test.sst", entries)
 	if err != nil {
 		t.Fatalf("WriteSSTable: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestStage2_SSTableReaderSanity(t *testing.T) {
 	customEntry := cascade.GenerateNumberedUpsert(1, "hello")
 	entries := []cascade.KVEntry{customEntry}
 
-	sst, err := cascade.WriteSSTable(dir+"/test.sst", entries)
+	sst, err := cascade.WriteSSTable(1, dir+"/test.sst", entries)
 	if err != nil {
 		t.Fatalf("SSTable file not found: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestStage2_SSTable_Get_100Keys(t *testing.T) {
 		entries[i] = cascade.GenerateNumberedUpsert(int64(i), fmt.Sprintf("val-%d", i))
 	}
 
-	sst, err := cascade.WriteSSTable(dir+"/test.sst", entries)
+	sst, err := cascade.WriteSSTable(1, dir+"/test.sst", entries)
 	if err != nil {
 		t.Fatalf("WriteSSTable: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestStage2_SSTable_MultiBlock_Get(t *testing.T) {
 		entries[i] = cascade.GenerateNumberedUpsert(int64(i), fmt.Sprintf("val-%d", i))
 	}
 
-	sst, err := cascade.WriteSSTable(dir+"/test.sst", entries)
+	sst, err := cascade.WriteSSTable(1, dir+"/test.sst", entries)
 	if err != nil {
 		t.Fatalf("WriteSSTable: %v", err)
 	}
@@ -163,7 +163,7 @@ func TestStage2_SSTable_Scan(t *testing.T) {
 	entries[10] = cascade.GenerateNumberedDelete(10)
 	entries[50] = cascade.GenerateNumberedDelete(50)
 
-	sst, err := cascade.WriteSSTable(dir+"/test.sst", entries)
+	sst, err := cascade.WriteSSTable(1, dir+"/test.sst", entries)
 	if err != nil {
 		t.Fatalf("WriteSSTable: %v", err)
 	}

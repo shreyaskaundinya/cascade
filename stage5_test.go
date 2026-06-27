@@ -16,14 +16,14 @@ import (
 func TestStage5_MergeNonOverlappingKeys(t *testing.T) {
 	dir := t.TempDir()
 
-	a, err := cascade.WriteSSTable(dir+"/a.sst", []cascade.KVEntry{
+	a, err := cascade.WriteSSTable(1, dir+"/a.sst", []cascade.KVEntry{
 		{Key: "apple", Value: "1"},
 		{Key: "cherry", Value: "3"},
 	})
 	if err != nil {
 		t.Fatalf("WriteSSTable a: %v", err)
 	}
-	b, err := cascade.WriteSSTable(dir+"/b.sst", []cascade.KVEntry{
+	b, err := cascade.WriteSSTable(2, dir+"/b.sst", []cascade.KVEntry{
 		{Key: "banana", Value: "2"},
 		{Key: "date", Value: "4"},
 	})
@@ -56,10 +56,10 @@ func TestStage5_MergeNonOverlappingKeys(t *testing.T) {
 func TestStage5_MergeOverlappingKeysNewerWins(t *testing.T) {
 	dir := t.TempDir()
 
-	older, _ := cascade.WriteSSTable(dir+"/older.sst", []cascade.KVEntry{
+	older, _ := cascade.WriteSSTable(1, dir+"/older.sst", []cascade.KVEntry{
 		{Key: "k", Value: "old"},
 	})
-	newer, _ := cascade.WriteSSTable(dir+"/newer.sst", []cascade.KVEntry{
+	newer, _ := cascade.WriteSSTable(2, dir+"/newer.sst", []cascade.KVEntry{
 		{Key: "k", Value: "new"},
 	})
 
@@ -87,10 +87,10 @@ func TestStage5_MergeOverlappingKeysNewerWins(t *testing.T) {
 func TestStage5_MergeDropsTombstonesWhenOlderValueExists(t *testing.T) {
 	dir := t.TempDir()
 
-	older, _ := cascade.WriteSSTable(dir+"/older.sst", []cascade.KVEntry{
+	older, _ := cascade.WriteSSTable(1, dir+"/older.sst", []cascade.KVEntry{
 		{Key: "k", Value: "alive"},
 	})
-	newer, _ := cascade.WriteSSTable(dir+"/newer.sst", []cascade.KVEntry{
+	newer, _ := cascade.WriteSSTable(2, dir+"/newer.sst", []cascade.KVEntry{
 		{Key: "k", Value: "", IsTombstone: true}},
 	)
 
@@ -113,11 +113,11 @@ func TestStage5_MergeDropsTombstonesWhenOlderValueExists(t *testing.T) {
 func TestStage5_MergeOutputIsSorted(t *testing.T) {
 	dir := t.TempDir()
 
-	a, _ := cascade.WriteSSTable(dir+"/a.sst", []cascade.KVEntry{
+	a, _ := cascade.WriteSSTable(1, dir+"/a.sst", []cascade.KVEntry{
 		{Key: "c", Value: "3"},
 		{Key: "a", Value: "1"},
 	})
-	b, _ := cascade.WriteSSTable(dir+"/b.sst", []cascade.KVEntry{
+	b, _ := cascade.WriteSSTable(2, dir+"/b.sst", []cascade.KVEntry{
 		{Key: "d", Value: "4"},
 		{Key: "b", Value: "2"},
 	})
