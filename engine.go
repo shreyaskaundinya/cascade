@@ -66,8 +66,9 @@ func (e *Engine) Restart() error { return nil }
 // Compact runs a full compaction pass across all levels.
 func (e *Engine) Compact() error { return nil }
 
-func (e *Engine) IOCount() int64 { return 0 }
-func (e *Engine) ResetIOCount()  {}
+func (e *Engine) IOCount() int64    { return 0 }
+func (e *Engine) ResetIOCount()     {}
+func (e *Engine) GetCurrentDir() string { return e.dataDir }
 
 func (e *Engine) l0Dir() string          { return filepath.Join(e.dataDir, "l0") }
 func (e *Engine) l1Dir() string          { return filepath.Join(e.dataDir, "l1") }

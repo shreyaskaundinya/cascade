@@ -44,12 +44,14 @@ func TestStage3_ReadFromL0IncrementsCounter(t *testing.T) {
 }
 
 // IO cost per SSTable probe (block-level):
-//   miss (key outside range, detected from header): 1 block read
-//   hit  (key in range):                            3 block reads (header + index + data)
+//
+//	miss (key outside range, detected from header): 1 block read
+//	hit  (key in range):                            3 block reads (header + index + data)
 //
 // Searching N SSTables newest-first:
-//   key in newest SSTable  → 3 IOs          (direct hit, no misses)
-//   key in oldest SSTable  → (N−1) + 3 IOs  (N−1 header misses + 1 hit)
+//
+//	key in newest SSTable  → 3 IOs          (direct hit, no misses)
+//	key in oldest SSTable  → (N−1) + 3 IOs  (N−1 header misses + 1 hit)
 func TestStage3_MultipleL0SSTablesAccumulateIOs(t *testing.T) {
 	e := newTestEngine(t)
 

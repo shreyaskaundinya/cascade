@@ -1,10 +1,11 @@
 package cascade
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
+	"io"
 	"os"
-	"time"
 )
 
 var ErrKeyNotFound = errors.New("key not found")
@@ -48,6 +49,67 @@ Block 3..N: Data Blocks
 
 type SSTable struct {
 	Path string
+}
+
+// SSTableHeader holds the metadata decoded from a header block.
+// LowKey and HighKey are the range bounds for this SSTable — use them
+// to skip the SSTable entirely if the search key is out of range (1 block read).
+type SSTableHeader struct {
+	TableNum   uint64
+	LowKey     string
+	HighKey    string
+	ItemCount  uint64
+	BlockCount uint64
+}
+
+// ParseHeaderBlock decodes the header block payload in field order:
+// table_num (uint64) | key range (NPE: Key=low, Value=high) | item_count (uint64) | block_count (uint64)
+func ParseHeaderBlock(b *Block) (SSTableHeader, error) {
+	r := bytes.NewReader(b.Payload())
+
+	var tableNum uint64
+	if err := binary.Read(r, binary.BigEndian, &tableNum); err != nil {
+		return SSTableHeader{}, err
+	}
+
+	keyRange, err := DecodeNPE(r)
+	if err != nil {
+		return SSTableHeader{}, err
+	}
+
+	var itemCount, blockCount uint64
+	if err := binary.Read(r, binary.BigEndian, &itemCount); err != nil {
+		return SSTableHeader{}, err
+	}
+	if err := binary.Read(r, binary.BigEndian, &blockCount); err != nil {
+		return SSTableHeader{}, err
+	}
+
+	return SSTableHeader{
+		TableNum:   tableNum,
+		LowKey:     keyRange.Key,
+		HighKey:    keyRange.Value,
+		ItemCount:  itemCount,
+		BlockCount: blockCount,
+	}, nil
+}
+
+// ParseIndexBlock decodes all IndexEntry records from an index block.
+// Iteration stops at ErrInvalidIndexEntryMagic (zero padding) or io.EOF.
+func ParseIndexBlock(b *Block) ([]IndexEntry, error) {
+	r := bytes.NewReader(b.Payload())
+	var entries []IndexEntry
+	for {
+		ie, err := DecodeIndexEntry(r)
+		if errors.Is(err, ErrInvalidIndexEntryMagic) || err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, ie)
+	}
+	return entries, nil
 }
 
 func WriteSSTable(tableNum uint64, path string, entries []KVEntry) (*SSTable, error) {
@@ -94,7 +156,7 @@ func WriteSSTable(tableNum uint64, path string, entries []KVEntry) (*SSTable, er
 	headerBlock := NewBlock(BlockTypeHeader)
 
 	tableNumBuf := make([]byte, 8)
-	binary.BigEndian.PutUint64(tableNumBuf, uint64(time.Now().UnixNano()))
+	binary.BigEndian.PutUint64(tableNumBuf, tableNum)
 	headerBlock.Append(tableNumBuf)
 
 	KeyRange := KVEntry{
