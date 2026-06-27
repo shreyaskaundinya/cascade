@@ -7,10 +7,10 @@ import (
 	"io"
 )
 
-const npeMagic        = uint16(0xC5CD)
+const npeMagic = uint16(0xC5CD)
 const indexEntryMagic = uint16(0xC5CE)
 
-var ErrInvalidNPEMagic        = errors.New("invalid NPE magic")
+var ErrInvalidNPEMagic = errors.New("invalid NPE magic")
 var ErrInvalidIndexEntryMagic = errors.New("invalid index entry magic")
 
 // NPEEncodedSize returns the number of bytes EncodeNPE will produce for entry.
@@ -74,6 +74,7 @@ func DecodeNPE(r io.Reader) (KVEntry, error) {
 	if _, err := io.ReadFull(r, val); err != nil {
 		return KVEntry{}, err
 	}
+
 	entry.Value = string(val)
 	return entry, nil
 }

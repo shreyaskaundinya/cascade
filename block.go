@@ -20,10 +20,15 @@ const (
 	BlockTypeData   BlockType = 3
 )
 
-const blockHeaderSize  = 4 // 3 magic bytes + 1 type byte
+const blockHeaderSize = 4 // 3 magic bytes + 1 type byte
 const BlockPayloadSize = BlockSize - blockHeaderSize
 
-var ErrBlockFull = errors.New("block is full")
+var (
+	ErrSSTableEmpty     = errors.New("sstable is empty")
+	ErrBlockEmpty       = errors.New("block is empty")
+	ErrInvalidBlockSize = errors.New("block size is invalid")
+	ErrBlockFull        = errors.New("block is full")
+)
 
 // Block is a fixed-size (4096 byte) unit of storage.
 type Block struct {

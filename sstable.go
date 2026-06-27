@@ -127,10 +127,12 @@ func WriteSSTable(tableNum uint64, path string, entries []KVEntry) (*SSTable, er
 
 	closeCurrentBlock := func() {
 		dataBlocks = append(dataBlocks, current)
+
 		indexEntries = append(indexEntries, IndexEntry{
 			DataBlockNum: uint16(len(dataBlocks) - 1),
 			HighKey:      highKey,
 		})
+
 		current = NewBlock(BlockTypeData)
 	}
 
@@ -142,6 +144,7 @@ func WriteSSTable(tableNum uint64, path string, entries []KVEntry) (*SSTable, er
 		current.Append(encoded)
 		highKey = entry.Key
 	}
+
 	closeCurrentBlock() // finalize the last (possibly partial) block
 
 	// Phase 2: build index block — one IndexEntry per data block
@@ -197,15 +200,187 @@ func WriteSSTable(tableNum uint64, path string, entries []KVEntry) (*SSTable, er
 }
 
 func (s *SSTable) Get(key string, counter *IOCounter) (KVEntry, bool, error) {
+	returnErr := func(err error) (KVEntry, bool, error) {
+		return KVEntry{}, false, err
+	}
+
+	// get the file
+	f, err := os.Open(s.Path)
+	if err != nil {
+		return returnErr(err)
+	}
+
+	fileStat, fileStatErr := f.Stat()
+	if fileStatErr != nil {
+		return returnErr(fileStatErr)
+	}
+
+	size := fileStat.Size()
+
+	if size == 0 {
+		return returnErr(ErrSSTableEmpty)
+	}
+
+	newOffset, seekErr := f.Seek(0, 0)
+	if seekErr != nil {
+		return returnErr(seekErr)
+	}
+
+	if newOffset != 0 {
+		return returnErr(errors.New("could not seek to 0"))
+	}
+
 	// Read the Header
+	headerBlock, headerBlockErr := ReadBlock(f, counter)
+	if headerBlockErr != nil {
+		return returnErr(headerBlockErr)
+	}
+
+	parsedHeader, parsedHeaderErr := ParseHeaderBlock(headerBlock)
+	if parsedHeaderErr != nil {
+		return returnErr(parsedHeaderErr)
+	}
+
+	if key < parsedHeader.LowKey || key > parsedHeader.HighKey {
+		return returnErr(ErrNotFound)
+	}
+
 	// Read the Index Block
+	indexBlkBlock, indexBlkBlockErr := ReadBlock(f, counter)
+	if indexBlkBlockErr != nil {
+		return returnErr(indexBlkBlockErr)
+	}
+
+	parsedIndexBlk, parsedIndexBlkErr := ParseIndexBlock(indexBlkBlock)
+	if parsedIndexBlkErr != nil {
+		return returnErr(parsedIndexBlkErr)
+	}
+
+	// go through all index entries and check which datablock to search
+	//TODO: do binary search here
+
+	blkNums := make([]uint16, 0)
+
+	// sorted ascending
+	// higher keys come later
+	// if key > high key go to next
+	for i := range parsedIndexBlk {
+		if key <= parsedIndexBlk[i].HighKey {
+			blkNums = append(blkNums, parsedIndexBlk[i].DataBlockNum)
+		}
+	}
+
 	// Read all the data blocks
+
+	// read the blk required
+	for _, blkNum := range blkNums {
+		// seen to start
+		f.Seek(0, 0)
+
+		blk := make([]byte, BlockSize)
+
+		// get block offset
+		blkOffset := BlockSize + BlockSize + int64((blkNum * BlockSize))
+
+		n, blkReadErr := f.ReadAt(blk, blkOffset)
+		if blkReadErr != nil {
+			return returnErr(blkReadErr)
+		}
+
+		if n != BlockSize {
+			return returnErr(ErrInvalidBlockSize)
+		}
+
+		parsedBlk, parsedBlkErr := ReadBlock(bytes.NewBuffer(blk), counter)
+		if parsedBlkErr != nil {
+			return returnErr(parsedBlkErr)
+		}
+
+		reader := bytes.NewBuffer(parsedBlk.Payload())
+
+		//TODO: make this loop better
+		for {
+			entry, entryDecodeErr := DecodeNPE(reader)
+			if entryDecodeErr != nil {
+				break
+			}
+
+			if entry.Key == key {
+				return entry, true, nil
+			}
+		}
+	}
+
 	return KVEntry{}, false, nil
 }
 
 func (s *SSTable) Scan(counter *IOCounter) ([]KVEntry, error) {
+	returnErr := func(err error) ([]KVEntry, error) {
+		return nil, err
+	}
+
+	// get the file
+	f, err := os.Open(s.Path)
+	if err != nil {
+		return returnErr(err)
+	}
+
+	fileStat, fileStatErr := f.Stat()
+	if fileStatErr != nil {
+		return returnErr(fileStatErr)
+	}
+
+	size := fileStat.Size()
+
+	if size == 0 {
+		return returnErr(ErrSSTableEmpty)
+	}
+
+	newOffset, seekErr := f.Seek(0, 0)
+	if seekErr != nil {
+		return returnErr(seekErr)
+	}
+
+	if newOffset != 0 {
+		return returnErr(errors.New("could not seek to 0"))
+	}
+
 	// Read the Header
-	// Read the Index Block
+	headerBlock, headerBlockErr := ReadBlock(f, counter)
+	if headerBlockErr != nil {
+		return returnErr(headerBlockErr)
+	}
+
+	parsedHeader, parsedHeaderErr := ParseHeaderBlock(headerBlock)
+	if parsedHeaderErr != nil {
+		return returnErr(parsedHeaderErr)
+	}
+
+	// skip index block
+	f.Seek(BlockSize, 1)
+
+	entries := make([]KVEntry, 0)
+
 	// Read all the data blocks
-	return nil, nil
+	for range parsedHeader.BlockCount {
+		parsedBlk, parsedBlkErr := ReadBlock(f, counter)
+		if parsedBlkErr != nil {
+			return returnErr(parsedBlkErr)
+		}
+
+		reader := bytes.NewBuffer(parsedBlk.Payload())
+
+		//TODO: make this loop better
+
+		for {
+			entry, entryDecodeErr := DecodeNPE(reader)
+			if entryDecodeErr != nil {
+				break
+			}
+
+			entries = append(entries, entry)
+		}
+	}
+
+	return entries, nil
 }
